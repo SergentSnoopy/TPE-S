@@ -6,6 +6,8 @@
 #include <limits.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdarg.h>
+
 
 #define TAIILETANPOM 12
 
@@ -85,7 +87,6 @@ int ecrire(void*p,unsigned int taille,unsigned int nbelem,FICHIER* f)
 	if(f->mode =='E')
 	{
 		
-		
 		if(f->offset+sizeof(char)*taille*nbelem >= f->taille)
 		{
 			int nbplacer=0;
@@ -110,18 +111,83 @@ int ecrire(void*p,unsigned int taille,unsigned int nbelem,FICHIER* f)
 	else return -1;
 }
 
+int fecriref(FICHIER* fp, char * format, ... ) {
+
+    va_list ap;
+    /* Initialize the va_list structure */
+    va_start( ap, format );
+
+    int nb = 0;
+    char* current;
+
+    while( (*current = *format) != '\0' ) {
+        format ++;
+        if ( *current != '%' ) {
+            ecrire(current,sizeof(char),1,fp);
+            nb ++;
+            continue;
+        }
+
+        switch( *format ++ ) {
+            case 'c':
+                {
+                    int* charvalue=malloc(sizeof(char));
+					*charvalue=va_arg(ap,int);
+					ecrire(charvalue,sizeof(char),1,fp);
+                }
+                break;
+            case 's':
+                {
+                   const char * string = (const char *) va_arg( ap, const char * );
+                    while( *string != '\0' ) {
+						ecrire((void *)string++,sizeof(char),1,fp);
+                        nb ++;
+                    }
+                }
+                break;
+			case 'd':
+                {
+					//todo bug, l'int s'affiche mal
+                    int *integer = malloc(sizeof(int));
+					*integer=(int) va_arg( ap, int );
+					
+					ecrire( integer,sizeof(int),1,fp);
+                    nb += *integer;
+                }
+                break;
+            default:
+                fprintf( stderr, "Specified format is not supported!" );
+                abort();
+        }
+    }
+
+    /* Release va_list resources */
+    va_end( ap );
+
+    return nb;
+}
+
 int main() {
 	FICHIER * f;
 	FICHIER * f2;
+	FICHIER * f3;
 	f=ouvrir("./plop.txt",'L');
 	char* s=malloc(sizeof(char)*10);
 	char* s2=malloc(sizeof(char)*10);
 	lire((void*)s,1,10,f);
 	lire((void*)s2,1,10,f);
+	
 	f2=ouvrir("ecriture.txt",'E');
 	ecrire((void*)s,1,5,f2);
 	ecrire((void*)s2,1,10,f2);
+	
+	f3=ouvrir("test_fecriref.txt",'E');
+	//fecriref(f3," %s","bon");
+	fecriref(f3," %c %s 12\n",'a', "bonjour");
+	fecriref(f3," %d \n",14);
+	
 	fermer(f);
 	fermer(f2);
+	fermer(f3);
 	return 0;
 }
