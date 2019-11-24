@@ -87,23 +87,23 @@ int ecrire(void*p,unsigned int taille,unsigned int nbelem,FICHIER* f)
 	if(f->mode =='E')
 	{
 		
-		if(f->offset+sizeof(char)*taille*nbelem >= f->taille)
+		if(f->offset+taille*nbelem >= f->taille)
 		{
 			int nbplacer=0;
-			while(f->offset+sizeof(char)*taille<f->taille)
+			while(f->offset+taille<f->taille)
 			{
-				memcpy(f->tanpom+f->offset,p+(nbplacer*sizeof(char)*taille),sizeof(char)*taille);
-				f->offset=f->offset+(sizeof(char)*taille);
+				memcpy(f->tanpom+f->offset,p+(nbplacer*taille),taille);
+				f->offset=f->offset+(taille);
 				nbplacer++;
 			}
 			write(f->desc,f->tanpom,f->offset);
-			memcpy(f->tanpom,p+(nbplacer*sizeof(char)*taille),sizeof(char)*taille*(nbelem-nbplacer));
-			f->offset=sizeof(char)*taille*(nbelem-nbplacer);
+			memcpy(f->tanpom,p+(nbplacer*taille),taille*(nbelem-nbplacer));
+			f->offset=taille*(nbelem-nbplacer);
 		}
 		else
 		{
-			memcpy(f->tanpom+f->offset,p,sizeof(char)*taille*nbelem);
-			f->offset=f->offset+sizeof(char)*taille*nbelem;
+			memcpy(f->tanpom+f->offset,p,taille*nbelem);
+			f->offset=f->offset+taille*nbelem;
 		}
 		
 		return nbelem;
@@ -114,7 +114,6 @@ int ecrire(void*p,unsigned int taille,unsigned int nbelem,FICHIER* f)
 int fecriref(FICHIER* fp, char * format, ... ) {
 
     va_list ap;
-    /* Initialize the va_list structure */
     va_start( ap, format );
 
     int nb = 0;
@@ -149,28 +148,78 @@ int fecriref(FICHIER* fp, char * format, ... ) {
                 {
 					//todo bug, l'int s'affiche mal
                     int *integer = malloc(sizeof(int));
-					*integer=(int) va_arg( ap, int );
-					
-					ecrire( integer,sizeof(int),1,fp);
+					*integer=va_arg( ap, int );
+					//printf("%c\n",*integer);
+					ecrire( (void*)integer,sizeof(int),1,fp);
                     nb += *integer;
                 }
                 break;
             default:
-                fprintf( stderr, "Specified format is not supported!" );
-                abort();
+                break;
         }
     }
 
-    /* Release va_list resources */
     va_end( ap );
-
     return nb;
+}
+
+
+int fliref(FICHIER *fp,char *format,...){
+	
+	va_list ap;
+    va_start( ap, format );
+
+    int nb = 0;
+    char* current=malloc(sizeof(char));
+	char* waste=malloc(sizeof(char)*10);
+
+    while( (*current = *format) != '\0' ) {
+        format ++;
+        if ( *current != '%' ) {
+            nb ++;
+            continue;
+        }
+		if(*format ==' ')
+		{
+			lire((void*)waste,sizeof(char),5,fp);
+		}
+        switch( *format ++ ) {
+            case 'c':
+                {
+                    char* charvalue=va_arg(ap,char*);
+					lire((void*)charvalue,sizeof(char),1,fp);
+                }
+                break;
+            case 's':
+                {
+                   char * string = (char *) va_arg( ap,char * );
+                    while( *string != ' ' ) {
+						lire((void *)string,sizeof(char),1,fp);
+                        nb ++;
+                    }
+					//*string='\0';
+                }
+                break;
+			case 'd':
+                {
+					
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    va_end( ap );
+    return nb;
+	return 0;
 }
 
 int main() {
 	FICHIER * f;
 	FICHIER * f2;
 	FICHIER * f3;
+	FICHIER * f4;
 	f=ouvrir("./plop.txt",'L');
 	char* s=malloc(sizeof(char)*10);
 	char* s2=malloc(sizeof(char)*10);
@@ -184,10 +233,20 @@ int main() {
 	f3=ouvrir("test_fecriref.txt",'E');
 	//fecriref(f3," %s","bon");
 	fecriref(f3," %c %s 12\n",'a', "bonjour");
-	fecriref(f3," %d \n",14);
+	fecriref(f3," %d \n",6565);
+	/*
+	f4=ouvrir("test_fliref.txt",'L');
+	char *c=malloc(sizeof(char)*2);
+	char * str=malloc(sizeof(char)*10);
+	int d;
+	fliref(f4,"%c %s %d",c,str,d);
 	
+	printf("%c",*c);
+	printf("%s",str);
+	*/
 	fermer(f);
 	fermer(f2);
 	fermer(f3);
+	//fermer(f4);
 	return 0;
 }
